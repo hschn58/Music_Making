@@ -19,6 +19,17 @@ LAYER_BANDS = {
     "atmosphere": "high",      # heat/danger/brightness -> hats, sustained highs
 }
 
+STREAMS = tuple(LAYER_BANDS)  # the three scene layers / frequency streams
+
+# Which scene layer (frequency stream) each rendered stem belongs to. Drives
+# both per-stream timbre and the story-driven mix automation.
+STEM_STREAM = {
+    "bass": "terrain", "kick": "terrain",
+    "harmony": "entity_activity", "lead": "entity_activity",
+    "snare": "entity_activity", "vocals": "entity_activity",
+    "pad": "atmosphere", "hats": "atmosphere",
+}
+
 
 class Section(BaseModel):
     """A structural region of the song (intro/verse/chorus/...)."""
@@ -46,6 +57,32 @@ class EntityEvent(BaseModel):
     label: str
 
 
+class StorySegment(BaseModel):
+    """One moment of the story, scored for each frequency stream.
+
+    The dominant stream is what the music foregrounds during this segment
+    (e.g. an all-rock stretch -> terrain dominates -> bass forward).
+    """
+
+    label: str
+    text: str
+    scores: dict[str, float]  # terrain / entity_activity / atmosphere, 0..1
+    intensity: float = Field(ge=0, le=1)
+    weight: float = Field(gt=0)  # relative duration
+
+    @property
+    def dominant(self) -> str:
+        return max(self.scores, key=lambda k: self.scores[k])
+
+
+class Story(BaseModel):
+    """The situation as an ordered sequence of moments."""
+
+    title: str
+    source: str
+    segments: list[StorySegment]
+
+
 class Storyboard(BaseModel):
     """Root contract: the scene every workflow conditions on."""
 
@@ -57,6 +94,7 @@ class Storyboard(BaseModel):
     key: str
     beats_per_bar: int = 4
     duration_sec: float = Field(gt=0)
+    story: Story
     sections: list[Section]
     frames: list[SceneFrame]
     entity_events: list[EntityEvent]
@@ -114,7 +152,9 @@ class CompositionResult(BaseModel):
 
 
 class BeatResult(BaseModel):
-    drum_stem: Stem
+    kick_stem: Stem   # terrain / low
+    snare_stem: Stem  # entity / mid
+    hats_stem: Stem   # atmosphere / high
 
 
 class VocalResult(BaseModel):
@@ -135,6 +175,7 @@ class QCReport(BaseModel):
     true_peak_db: float
     non_silent: bool
     mean_correlation: float
+    dominance_accuracy: float  # fraction of segments whose dominant stream is foregrounded
     band_scores: list[QCBandScore]
     notes: list[str] = Field(default_factory=list)
 

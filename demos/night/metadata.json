@@ -1,0 +1,46 @@
+{
+  "title": "Then",
+  "genre": "smooth-funk",
+  "tempo_bpm": 107,
+  "key": "D dorian",
+  "duration_sec": 29.158878504672895,
+  "lyrics_source": "local",
+  "aligned_syllables": 50,
+  "stems": {
+    "bass": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/bass.wav",
+    "harmony": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/harmony.wav",
+    "pad": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/pad.wav",
+    "lead": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/lead.wav",
+    "kick": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/kick.wav",
+    "snare": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/snare.wav",
+    "hats": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/hats.wav",
+    "vocals": "/workspaces/Music_Making/output/music_making/demos/night/mm_0_35qu2tmz/vocals.wav"
+  },
+  "qc": {
+    "passed": true,
+    "duration_sec": 29.658866213151928,
+    "integrated_lufs": -17.5,
+    "true_peak_db": -0.08738178841199014,
+    "non_silent": true,
+    "mean_correlation": 0.30610074909588453,
+    "dominance_accuracy": 0.6666666666666666,
+    "band_scores": [
+      {
+        "band": "low",
+        "layer": "terrain",
+        "correlation": 0.08339324780187933
+      },
+      {
+        "band": "mid",
+        "layer": "entity_activity",
+        "correlation": 0.8218008664635634
+      },
+      {
+        "band": "high",
+        "layer": "atmosphere",
+        "correlation": 0.013108133022210882
+      }
+    ],
+    "notes": []
+  }
+}

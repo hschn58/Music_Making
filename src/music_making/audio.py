@@ -23,7 +23,9 @@ SOUNDFONT_CANDIDATES = [
 ]
 
 # Frequency bands paired with scene layers (see contracts.LAYER_BANDS).
-BANDS = {"low": (0.0, 250.0), "mid": (250.0, 2000.0), "high": (2000.0, SR / 2)}
+# The high band starts well above the snare body so it is hats/sparkle-dominated
+# (atmosphere), keeping the streams spectrally separated for the QC gate.
+BANDS = {"low": (0.0, 220.0), "mid": (220.0, 2000.0), "high": (4500.0, SR / 2)}
 
 
 def find_soundfont() -> str:
@@ -127,6 +129,14 @@ def _downsample(x: np.ndarray, n: int) -> np.ndarray:
     return np.interp(idx, np.arange(len(x)), x)
 
 
+def _smooth(x: np.ndarray, window: int = 5) -> np.ndarray:
+    """Light moving-average so per-onset spikes don't mask the macro arc."""
+    if window <= 1 or len(x) < window:
+        return x
+    kernel = np.ones(window) / window
+    return np.convolve(x, kernel, mode="same")
+
+
 def normalize_env(x: np.ndarray) -> np.ndarray:
     x = np.asarray(x, dtype=np.float64)
     if x.size == 0:
@@ -149,7 +159,7 @@ def band_envelopes(samples: np.ndarray, sr: int = SR, n_points: int = 64) -> dic
     for band, (lo, hi) in BANDS.items():
         mask = (freqs >= lo) & (freqs < hi)
         energy = spec[mask, :].sum(axis=0)
-        out[band] = normalize_env(_downsample(energy, n_points))
+        out[band] = normalize_env(_smooth(_downsample(energy, n_points)))
     return out
 
 

@@ -17,7 +17,6 @@ from .contracts import LyricLine, LyricsResult, Storyboard
 
 FILLER = ["baby", "tonight", "moving", "slow", "feel", "the", "groove", "now",
           "shadow", "light", "we", "keep", "on", "running", "easy", "low"]
-SINGABLE = {"verse", "chorus", "bridge"}
 HOOK = ["ba", "ba", "ba", "ba", "haa"]
 
 
@@ -50,17 +49,15 @@ def _local(sb: Storyboard) -> LyricsResult:
     rng = random.Random(sb.seed + 3)
     pool = _content_words(sb.situation) + FILLER
     lines: list[LyricLine] = []
-    for s in sb.sections:
-        if s.name not in SINGABLE:
-            continue
-        n_lines = 2 if s.name == "chorus" else 1
+    # One+ line per story segment; entity-forward moments get more words to sing.
+    for seg in sb.story.segments:
+        n_lines = 2 if seg.dominant == "entity_activity" else 1
         for _ in range(n_lines):
             words = [rng.choice(pool) for _ in range(rng.randint(5, 7))]
-            text = " ".join(words)
             syl: list[str] = []
             for w in words:
                 syl.extend(syllables(w))
-            lines.append(LyricLine(section=s.name, text=text, syllables=syl))
+            lines.append(LyricLine(section=seg.label, text=" ".join(words), syllables=syl))
     return LyricsResult(title=sb.title, lines=lines, hook=HOOK, source="local")
 
 
@@ -89,14 +86,14 @@ def _llm(sb: Storyboard) -> LyricsResult | None:
         raw = [ln.strip() for ln in text.splitlines() if ln.strip()]
         if not raw:
             return None
-        singable = [s.name for s in sb.sections if s.name in SINGABLE] or ["verse"]
+        labels = [seg.label for seg in sb.story.segments] or ["verse"]
         lines = []
         for i, ln in enumerate(raw):
             syl: list[str] = []
             for w in re.findall(r"[a-z']+", ln.lower()):
                 syl.extend(syllables(w))
             if syl:
-                lines.append(LyricLine(section=singable[i % len(singable)], text=ln, syllables=syl))
+                lines.append(LyricLine(section=labels[i % len(labels)], text=ln, syllables=syl))
         if not lines:
             return None
         return LyricsResult(title=sb.title, lines=lines, hook=HOOK, source="llm")

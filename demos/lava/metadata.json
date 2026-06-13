@@ -1,0 +1,46 @@
+{
+  "title": "Through",
+  "genre": "smooth-funk",
+  "tempo_bpm": 116,
+  "key": "A dorian",
+  "duration_sec": 28.965517241379313,
+  "lyrics_source": "local",
+  "aligned_syllables": 62,
+  "stems": {
+    "bass": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/bass.wav",
+    "harmony": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/harmony.wav",
+    "pad": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/pad.wav",
+    "lead": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/lead.wav",
+    "kick": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/kick.wav",
+    "snare": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/snare.wav",
+    "hats": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/hats.wav",
+    "vocals": "/workspaces/Music_Making/output/music_making/demos/lava/mm_0_p_57z6gz/vocals.wav"
+  },
+  "qc": {
+    "passed": true,
+    "duration_sec": 29.46551020408163,
+    "integrated_lufs": -18.1,
+    "true_peak_db": -0.08711404008385855,
+    "non_silent": true,
+    "mean_correlation": 0.42743765401592704,
+    "dominance_accuracy": 0.5,
+    "band_scores": [
+      {
+        "band": "low",
+        "layer": "terrain",
+        "correlation": 0.8327551591018304
+      },
+      {
+        "band": "mid",
+        "layer": "entity_activity",
+        "correlation": 0.10288203679231352
+      },
+      {
+        "band": "high",
+        "layer": "atmosphere",
+        "correlation": 0.34667576615363727
+      }
+    ],
+    "notes": []
+  }
+}

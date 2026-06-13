@@ -11,18 +11,51 @@ Two anchoring examples:
   across, high-frequency lingering tones are the heat and danger, and the little
   vocal motifs ("ba ba ba… Haaa") are the anthropomorphized enemies.
 
-So a scene decomposes into **three layers, each mapped to a frequency band**:
+A scene decomposes into **three layers / frequency streams**:
 
 | Scene layer        | Meaning                         | Band | Instruments        |
 |--------------------|---------------------------------|------|--------------------|
 | `terrain`          | ground / structure              | low  | bass, kick         |
-| `entity_activity`  | anthropomorphized moving agents | mid  | keys, lead, vocals |
-| `atmosphere`       | heat / danger / brightness      | high | pad, hats          |
+| `entity_activity`  | anthropomorphized moving agents | mid  | keys, lead, vocals, snare |
+| `atmosphere`       | heat / danger / brightness      | high | pad, shimmer, hats |
+
+## Story: shifting dominance
+
+The crucial part of story-depth is that **which stream is in the foreground
+shifts as the story unfolds** — an all-rock stretch is bass-forward; running
+through fire is highs-forward; facing moving enemies is mid-forward.
+
+So a situation is first parsed into a **Story**: an ordered list of segments,
+each scored for all three streams (with one dominant). Text is split on
+connectives (`then`, `while`, `and`, punctuation) with light stemming; video is
+split into windows. The scene timeline is then built from the segments so the
+dominant stream changes section to section. That single decision drives three
+things downstream:
+
+- **Arrangement** — instruments are gated by their stream, so they thin and
+  thicken with the story (bass drops out where there's no terrain, hats only on
+  atmosphere, the lead motif foregrounds on entity moments).
+- **Mix** — each stem's level rides its stream's scene layer, so the dominant
+  stream literally comes forward in its segment.
+- **A recurring motif** — the lead is a short theme that is transposed/retrograded
+  per segment, so the piece feels composed rather than random.
+
+## Timbre: a voice per stream
+
+Each stream has its own **TimbreKit** (in the genre preset, swappable), and the
+timbre is also modulated by the scene over time:
+
+- `drive` (saturation) follows **tension**
+- a time-varying low-pass opens with **brightness**
+- per-kit `reverb` (space) and `tremolo` (movement)
+
+Cutoffs are chosen so the streams stay spectrally separated (the mid stream sits
+below the high band), which keeps both the mix and the QC gate legible.
 
 ## Architecture
 
-A single **Storyboard** (the scene, as layered timelines + discrete entity
-events) is the root contract. Four workflows condition on it and run as a DAG:
+A single **Storyboard** (scene timelines + Story + entity events) is the root
+contract. Four workflows condition on it and run as a DAG:
 
 ```
 lyrics   ─┐
@@ -30,39 +63,36 @@ compose  ─┼─► vocals ─► mix ─► QC gate
 beats    ─┘
 ```
 
-`lyrics`, `compose`, and `beats` are independent and run concurrently. `vocals`
-needs the lyrics (syllables) and the lead melody (note pitches). `mix` needs all
-stems. Every arrow is a typed Pydantic contract (`contracts.py`), which is what
-lets the workflows run in parallel yet still cohere into one song.
-
-Each instrument is generated so its band energy *follows* its scene layer (e.g.
-the bass plays louder/denser where `terrain` is high), and is rendered to an
-isolated stem so the mix and the QC gate can reason per-band.
+`lyrics`/`compose`/`beats` are independent and run concurrently; `vocals` needs
+the lyrics (syllables) and lead melody (note pitches); `mix` needs all stems.
+Every arrow is a typed Pydantic contract (`contracts.py`). Each instrument is
+rendered to an isolated stem (`fluidsynth` + GM SoundFont), stamped with its
+stream's timbre, then mixed.
 
 ## The autonomous quality gate
 
-There is no human in the loop. A track passes QC (`qc.py`) when:
+No human in the loop. A track passes QC (`qc.py`) when it is non-silent, the
+right length, not clipping, **and** the scene is tracked — by either of two
+measures:
 
-1. it is non-silent, the right length, and not clipping, **and**
-2. its measured per-band energy envelope **tracks the scene**: the low/mid/high
-   envelopes of the final mix correlate with `terrain`/`entity_activity`/
-   `atmosphere` above a threshold.
+1. **Envelope correlation** — the low/mid/high energy envelopes of the final mix
+   correlate with `terrain`/`entity_activity`/`atmosphere`.
+2. **Dominance accuracy** — for each story segment, its dominant stream's band is
+   louder than that band's own average (i.e. the foreground actually shifts with
+   the story).
 
-(2) is the theory made measurable — the lava-world intuition as a pass/fail test.
-Mastering uses a single constant gain rather than dynamic loudness normalization
-precisely so this temporal envelope is preserved.
+(2) is the more robust, concept-aligned measure: it tests the lava-world
+intuition directly. Mastering uses a single constant gain (not dynamic loudness
+normalization) so the scene's energy arc — the thing being measured — survives.
 
 ## Inputs
 
-- **Text** (`from_text`): a situation in words → keyword + arc heuristics build
-  the layered timelines.
-- **Video** (`from_video`): a real clip → ffmpeg/opencv extract brightness
-  (→ atmosphere), motion (→ entities), and contrast (→ terrain), with motion
-  spikes becoming entity events.
+- **Text** (`from_text`): a situation → story segments → scene timelines.
+- **Video** (`from_video`): a clip → ffmpeg/opencv brightness (atmosphere),
+  motion (entities), contrast (terrain), windowed into story segments.
 
 ## Lyrics: hybrid, free-first
 
-Lyrics come from an LLM when one is available (`ANTHROPIC_API_KEY`, online), and
-from a deterministic free generator otherwise. Set `MUSIC_MAKING_OFFLINE=1` to
-force the free path — the whole pipeline then runs free, offline, and
-reproducibly (this is what CI uses).
+Lyrics come from an LLM when available (`ANTHROPIC_API_KEY`), and a deterministic
+free generator otherwise. `MUSIC_MAKING_OFFLINE=1` forces the free path — the
+whole pipeline then runs free, offline, and reproducibly (this is what CI uses).

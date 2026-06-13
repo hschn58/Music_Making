@@ -5,7 +5,8 @@ energy follows the scene scores high; the QC gate measures exactly that.
 import numpy as np
 
 from music_making import audio, qc
-from music_making.contracts import SceneFrame, Section, Storyboard
+from music_making.contracts import (SceneFrame, Section, Story, StorySegment,
+                                    Storyboard)
 
 N = 64
 
@@ -18,9 +19,13 @@ def _ramp_storyboard(duration_sec, terrain, atmosphere, entity=0.5):
             t=t, terrain=terrain(t), entity_activity=entity,
             atmosphere=atmosphere(t), tension=0.5, brightness=atmosphere(t),
         ))
+    story = Story(title="synthetic", source="test", segments=[
+        StorySegment(label="v", text="t",
+                     scores={"terrain": 0.5, "entity_activity": 0.5, "atmosphere": 0.5},
+                     intensity=0.5, weight=1.0)])
     return Storyboard(
         title="synthetic", situation="test", genre="smooth-funk", seed=0,
-        tempo_bpm=100, key="A dorian", duration_sec=duration_sec,
+        tempo_bpm=100, key="A dorian", duration_sec=duration_sec, story=story,
         sections=[Section(name="verse", bars=4)], frames=frames, entity_events=[],
     )
 
@@ -36,7 +41,7 @@ def test_energy_envelope_tracks_scene(tmp_path):
     n = int(dur * audio.SR)
     # low energy falls over time, high energy rises over time
     sig = 0.5 * _am_tone(80, np.linspace(1, 0, 64), n, audio.SR)
-    sig += 0.5 * _am_tone(3500, np.linspace(0, 1, 64), n, audio.SR)
+    sig += 0.5 * _am_tone(6000, np.linspace(0, 1, 64), n, audio.SR)  # high band starts at 4.5 kHz
     wav = str(tmp_path / "synthetic.wav")
     audio.save_wav(wav, sig)
 

@@ -39,10 +39,12 @@ def _run_once(sb: Storyboard, workdir: str, soundfont: str | None) -> Track:
         "harmony": comp.harmony_stem,
         "pad": comp.pad_stem,
         "lead": comp.lead_stem,
-        "drums": beat.drum_stem,
+        "kick": beat.kick_stem,
+        "snare": beat.snare_stem,
+        "hats": beat.hats_stem,
         "vocals": voc.vocal_stem,
     }
-    wav_path, mp3_path = mix_mod.mix(stems, workdir, sb.duration_sec)
+    wav_path, mp3_path = mix_mod.mix(stems, workdir, sb)
     report = qc.evaluate(wav_path, sb)
 
     meta_path = str(Path(workdir) / "metadata.json")

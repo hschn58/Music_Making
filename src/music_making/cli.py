@@ -42,8 +42,9 @@ def main(argv: list[str] | None = None) -> int:
 
     qc = track.qc
     status = "PASS" if qc.passed else "FAIL"
-    print(f"[QC {status}] mean scene-tracking corr={qc.mean_correlation:.2f}  "
-          f"LUFS={qc.integrated_lufs:.1f}  peak={qc.true_peak_db:.1f}dB", file=sys.stderr)
+    print(f"[QC {status}] scene corr={qc.mean_correlation:.2f}  "
+          f"dominance={qc.dominance_accuracy:.0%}  LUFS={qc.integrated_lufs:.1f}  "
+          f"peak={qc.true_peak_db:.1f}dB", file=sys.stderr)
     for s in qc.band_scores:
         print(f"  {s.band:>4} <- {s.layer:<16} corr={s.correlation:+.2f}", file=sys.stderr)
     for n in qc.notes:
