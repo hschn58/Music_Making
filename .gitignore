@@ -5,10 +5,13 @@ dist/
 *.egg-info/
 .coverage
 .pytest_cache/
+.DS_Store
 
 # generated audio / run output
 out/
+demos/
 smoke_out*/
 mm_*/
 *.wav
 *.mp3
+metadata.json
