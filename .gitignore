@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.coverage
+.pytest_cache/
+
+# generated audio / run output
+out/
+smoke_out*/
+mm_*/
+*.wav
+*.mp3
