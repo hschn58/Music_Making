@@ -29,6 +29,9 @@ with `MUSIC_MAKING_SOUNDFONT=/path/to.sf2`.
 make-song --situation "hopping across lava rock while fire enemies jump in the heat" \
           --duration 30 --out ./out
 
+# from a sequence of photos (a literal storyboard; order = the story)
+make-song --images trail.jpg teepee.jpg fire.jpg --seconds-per-scene 9 --out ./out
+
 # from a real video (the music mirrors what's on screen)
 make-song --video clip.mp4 --out ./out
 ```

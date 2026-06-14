@@ -105,6 +105,12 @@ normalization) so the scene's energy arc — the thing being measured — surviv
 ## Inputs
 
 - **Text** (`from_text`): a situation → story segments → scene timelines.
+- **Images** (`from_images`): a sequence of photos (a literal storyboard). Each
+  image's pixels give its stream levels (warmth+contrast → atmosphere, edges →
+  terrain) *and* a TextureProfile (2D spatial-frequency → timbral homogeneity);
+  structural features are normalized across the set. The order is the authored
+  story and may repeat scenes (theme + recapitulation). This is the spatial-domain
+  realization of the scalogram idea: timbre is sourced from real pixels.
 - **Video** (`from_video`): a clip → ffmpeg/opencv brightness (atmosphere),
   motion (entities), contrast (terrain), windowed into story segments.
 

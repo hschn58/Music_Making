@@ -17,9 +17,13 @@ def build_parser() -> argparse.ArgumentParser:
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument("--situation", help="Describe the scene the song is about.")
     src.add_argument("--video", help="Path to a video whose scene drives the music.")
+    src.add_argument("--images", nargs="+", metavar="IMG",
+                     help="Scene photos, in story order (a literal storyboard).")
     p.add_argument("--genre", default="smooth-funk", help="Genre preset (default: smooth-funk).")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--duration", type=float, default=30.0, help="Target seconds (text mode).")
+    p.add_argument("--seconds-per-scene", type=float, default=10.0,
+                   help="Seconds each image holds (images mode).")
     p.add_argument("--title", default=None)
     p.add_argument("--out", default="out", help="Output directory.")
     p.add_argument("--soundfont", default=None, help="Override SoundFont path.")
@@ -30,7 +34,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
-    if args.video:
+    timbres = None
+    if args.images:
+        sb, timbres = storyboard.from_images(args.images, genre=args.genre, seed=args.seed,
+                                             seconds_per_scene=args.seconds_per_scene,
+                                             title=args.title)
+    elif args.video:
         sb = storyboard.from_video(args.video, genre=args.genre, seed=args.seed, title=args.title)
     else:
         sb = storyboard.from_text(args.situation, genre=args.genre, seed=args.seed,
@@ -38,7 +47,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Scene: {sb.title}  |  {sb.genre}  |  {sb.tempo_bpm} bpm  |  {sb.key}  "
           f"|  {sb.duration_sec:.1f}s", file=sys.stderr)
-    track = produce(sb, args.out, soundfont=args.soundfont, max_attempts=args.attempts)
+    track = produce(sb, args.out, soundfont=args.soundfont, max_attempts=args.attempts,
+                    timbres=timbres)
 
     qc = track.qc
     status = "PASS" if qc.passed else "FAIL"

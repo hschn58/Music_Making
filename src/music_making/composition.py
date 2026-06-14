@@ -51,8 +51,10 @@ def _transform(motif, section_idx, dominant_entity):
     return m
 
 
-def compose(sb: Storyboard, workdir: str, soundfont: str | None = None) -> CompositionResult:
+def compose(sb: Storyboard, workdir: str, soundfont: str | None = None,
+            timbres: dict | None = None) -> CompositionResult:
     preset = get_preset(sb.genre)
+    kits = timbres or preset.timbres
     rng = random.Random(sb.seed + 1)
     tonic = theory.parse_key(sb.key)
     mode = sb.key.split()[-1]
@@ -145,7 +147,7 @@ def compose(sb: Storyboard, workdir: str, soundfont: str | None = None) -> Compo
     ]
     stems: dict[str, Stem] = {}
     for name, notes, default_prog, stream in spec:
-        kit = preset.timbres[stream]
+        kit = kits[stream]
         program = kit.program if kit.program is not None else default_prog
         mid_path = str(wd / f"{name}.mid")
         wav_path = str(wd / f"{name}.wav")

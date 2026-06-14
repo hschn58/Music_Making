@@ -21,8 +21,10 @@ KICK_STEPS = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1]
 SNARE_STEPS = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
 
 
-def make_beats(sb: Storyboard, workdir: str, soundfont: str | None = None) -> BeatResult:
+def make_beats(sb: Storyboard, workdir: str, soundfont: str | None = None,
+               timbres: dict | None = None) -> BeatResult:
     preset = get_preset(sb.genre)
+    kits = timbres or preset.timbres
     sec_per_beat = 60.0 / sb.tempo_bpm
     step_sec = sec_per_beat / 4.0
     total_bars = sum(s.bars for s in sb.sections)
@@ -56,7 +58,7 @@ def make_beats(sb: Storyboard, workdir: str, soundfont: str | None = None) -> Be
             ("hats", hats, "atmosphere")]
     rendered: dict[str, Stem] = {}
     for name, notes, stream in spec:
-        kit = preset.timbres[stream]
+        kit = kits[stream]
         mid_path = str(wd / f"{name}.mid")
         wav_path = str(wd / f"{name}.wav")
         midi.write_instrument_midi(mid_path, notes, program=0, tempo_bpm=sb.tempo_bpm, is_drum=True)

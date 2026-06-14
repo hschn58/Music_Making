@@ -6,7 +6,7 @@ that are mixed into one track and checked by an autonomous, scene-aware QC gate.
 
 from .contracts import Storyboard, Track
 from .orchestrator import produce
-from .storyboard import from_text, from_video
+from .storyboard import from_images, from_text, from_video
 
-__all__ = ["Storyboard", "Track", "produce", "from_text", "from_video"]
+__all__ = ["Storyboard", "Track", "produce", "from_text", "from_video", "from_images"]
 __version__ = "0.1.0"

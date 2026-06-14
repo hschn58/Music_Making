@@ -235,6 +235,54 @@ def from_text(situation, *, genre="smooth-funk", seed=0, duration_sec=30.0, titl
                       frames=frames, entity_events=events)
 
 
+def from_images(paths, *, order=None, genre="smooth-funk", seed=0,
+                seconds_per_scene=10.0, title=None):
+    """Build a story from a sequence of photos (a literal storyboard).
+
+    Each image becomes a Story segment whose stream levels are read from its
+    pixels; `order` (names/substrings or indices) chooses the narrative sequence,
+    and may repeat scenes for theme-and-recapitulation forms. Returns
+    ``(storyboard, timbres)`` where timbres are sourced from the exemplar scenes.
+    """
+    from . import images as imgmod
+
+    scenes_all = imgmod.analyze_scenes(list(paths))
+    if order is None:
+        seq = scenes_all
+    else:
+        seq = []
+        for o in order:
+            if isinstance(o, int):
+                seq.append(scenes_all[o])
+            else:
+                match = next((s for s in scenes_all if o.lower() in s.name.lower()), None)
+                seq.append(match or scenes_all[0])
+
+    preset = get_preset(genre)
+    rng = random.Random(seed)
+    beats_per_bar = 4
+    bar_sec = beats_per_bar * 60.0 / preset.tempo_bpm
+    bars_per_scene = max(1, round(seconds_per_scene / bar_sec))
+
+    segments = [StorySegment(label=sc.name, text=sc.name, scores=sc.scores,
+                             intensity=sc.intensity, weight=float(bars_per_scene))
+                for sc in seq]
+    story = Story(title=title or "image-story",
+                  source="images:" + ",".join(s.name for s in seq), segments=segments)
+    total_bars = bars_per_scene * len(seq)
+    sections, spans = _sections_from_story(story, total_bars)
+    duration_sec = sum(s.bars for s in sections) * bar_sec
+    frames = _frames_from_story(spans, total_bars, rng)
+    events = _entity_events(spans, total_bars, bar_sec, duration_sec, rng)
+
+    sb = Storyboard(title=story.title, situation=story.source, genre=preset.name, seed=seed,
+                    tempo_bpm=preset.tempo_bpm, key=f"A {preset.mode}",
+                    beats_per_bar=beats_per_bar, duration_sec=duration_sec, story=story,
+                    sections=sections, frames=frames, entity_events=events)
+    timbres = imgmod.derive_timbres(seq)
+    return sb, timbres
+
+
 def _video_duration(path: str) -> float:
     try:
         out = subprocess.run(

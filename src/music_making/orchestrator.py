@@ -23,11 +23,12 @@ from . import composition, lyrics as lyrics_mod, mix as mix_mod, qc, vocals
 from .contracts import Storyboard, Track
 
 
-def _run_once(sb: Storyboard, workdir: str, soundfont: str | None) -> Track:
+def _run_once(sb: Storyboard, workdir: str, soundfont: str | None,
+              timbres: dict | None = None) -> Track:
     with ThreadPoolExecutor(max_workers=3) as ex:
         f_lyrics = ex.submit(lyrics_mod.generate, sb)
-        f_comp = ex.submit(composition.compose, sb, workdir, soundfont)
-        f_beats = ex.submit(beats_mod.make_beats, sb, workdir, soundfont)
+        f_comp = ex.submit(composition.compose, sb, workdir, soundfont, timbres)
+        f_beats = ex.submit(beats_mod.make_beats, sb, workdir, soundfont, timbres)
         lyr = f_lyrics.result()
         comp = f_comp.result()
         beat = f_beats.result()
@@ -66,7 +67,7 @@ def _run_once(sb: Storyboard, workdir: str, soundfont: str | None) -> Track:
 
 
 def produce(sb: Storyboard, out_dir: str, *, soundfont: str | None = None,
-            max_attempts: int = 1) -> Track:
+            max_attempts: int = 1, timbres: dict | None = None) -> Track:
     """Run the pipeline, retrying with a fresh seed until QC passes."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -74,7 +75,7 @@ def produce(sb: Storyboard, out_dir: str, *, soundfont: str | None = None,
     current = sb
     for attempt in range(max_attempts):
         workdir = tempfile.mkdtemp(prefix=f"mm_{attempt}_", dir=str(out))
-        track = _run_once(current, workdir, soundfont)
+        track = _run_once(current, workdir, soundfont, timbres)
         if track.qc.passed:
             break
         current = current.model_copy(update={"seed": current.seed + 1})

@@ -10,6 +10,7 @@ dist/
 # generated audio / run output
 out/
 demos/
+scenes/
 smoke_out*/
 mm_*/
 *.wav
