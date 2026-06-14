@@ -40,17 +40,34 @@ things downstream:
 - **A recurring motif** — the lead is a short theme that is transposed/retrograded
   per segment, so the piece feels composed rather than random.
 
-## Timbre: a voice per stream
+## Timbre: describing each element's texture
 
-Each stream has its own **TimbreKit** (in the genre preset, swappable), and the
-timbre is also modulated by the scene over time:
+Timbre is not a coating on a note — it is the **sonification of the real
+element**. Each stream has a **TextureProfile** (in the genre preset, swappable)
+that describes its element as faithfully as possible:
 
-- `drive` (saturation) follows **tension**
-- a time-varying low-pass opens with **brightness**
-- per-kit `reverb` (space) and `tremolo` (movement)
+- **spectral homogeneity** (`bandwidth`): homogeneous/tonal ↔ broadband/noisy
+- **multi-timescale amplitude modulation**: a `slow` drift + a `fast` flicker,
+  where `chaos` makes the flicker noise-driven rather than a clean LFO
+- **medium / residue**: a viscous, dark decay tail — the substance the element
+  sits in
+- saturation (`drive`, follows **tension**) and a low-pass that opens with
+  **brightness**
 
-Cutoffs are chosen so the streams stay spectrally separated (the mid stream sits
-below the high band), which keeps both the mix and the QC gate legible.
+The three archetypes fall straight out of this:
+
+| Stream | Element | Profile |
+|---|---|---|
+| terrain | rock | homogeneous, narrow; gentle slow in-and-out; a **viscous lava residue** tail |
+| atmosphere | fire | broadband; a **fast chaotic flicker** under a **slow drift** (the flame's wandering centre of mass) |
+| entity | agents | kept clean — conscious beings are described by *feeling*, carried by the sparse unison motif, not by physical texture |
+
+A conscious agent can't be captured by texture, so the entity stream is
+deliberately untextured; its character comes from the composition (sparse,
+collective-unison motif). Cutoffs keep the streams spectrally separated (mid sits
+below the high band) so the mix and QC gate stay legible. Note these profiles are
+the *same object* a per-feature scalogram would measure — the bridge to driving
+timbre from real video texture later.
 
 ## Architecture
 

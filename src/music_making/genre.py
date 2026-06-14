@@ -9,22 +9,30 @@ which is configurable and scene-modulated.
 
 from dataclasses import dataclass, field
 
-from .timbre import TimbreKit
+from .timbre import TextureProfile
 
 
-def _smooth_funk_timbres() -> dict[str, TimbreKit]:
+def _smooth_funk_timbres() -> dict[str, TextureProfile]:
     return {
-        # warm, rounded low end
-        "terrain": TimbreKit("warm-low", cutoff_base=2200, brightness_depth=0.4,
-                             drive_base=0.18, drive_depth=0.25, reverb=0.06),
-        # present, slightly gritty mid — the 'voice' of the agents. Cutoff kept
-        # below the high band so the mid stream stays out of atmosphere's territory.
-        "entity_activity": TimbreKit("present-mid", cutoff_base=3500, brightness_depth=0.4,
-                                     drive_base=0.10, drive_depth=0.35, reverb=0.16),
-        # airy, shimmering, spacious top
-        "atmosphere": TimbreKit("airy-high", cutoff_base=11000, brightness_depth=0.9,
-                                drive_base=0.04, drive_depth=0.10, reverb=0.22,
-                                tremolo_rate=5.5, tremolo_depth=0.16),
+        # ROCK: homogeneous at macro + micro scale -> narrow/tonal, a gentle slow
+        # in-and-out, no fast flicker; emerging from lava -> a viscous residue tail.
+        "terrain": TextureProfile(
+            "rock", cutoff_base=2000, brightness_depth=0.3, bandwidth=0.05,
+            drive_base=0.18, drive_depth=0.20,
+            slow_rate=0.3, slow_depth=0.30, fast_depth=0.0,
+            residue=0.35, residue_decay=0.5, reverb=0.05),
+        # AGENTS: conscious -> described by feeling, kept clean (the sparse unison
+        # motif in the composition carries their character, not DSP texture).
+        "entity_activity": TextureProfile(
+            "agents", cutoff_base=3500, brightness_depth=0.4, bandwidth=0.05,
+            drive_base=0.10, drive_depth=0.30, reverb=0.16),
+        # FIRE: broadband + a fast, chaotic flicker (flames) modulated by a slow
+        # drift (the centre of mass wandering over long periods).
+        "atmosphere": TextureProfile(
+            "fire", cutoff_base=11000, brightness_depth=0.9, bandwidth=0.55,
+            drive_base=0.04, drive_depth=0.10,
+            slow_rate=0.2, slow_depth=0.35, fast_rate=11.0, fast_depth=0.6, chaos=0.85,
+            reverb=0.22),
     }
 
 
@@ -39,7 +47,7 @@ class GenrePreset:
     lead_program: int
     swing: float  # 0..1 swing pushed onto off-beats
     falsetto: bool  # shift sung vocals up an octave
-    timbres: dict[str, TimbreKit] = field(default_factory=_smooth_funk_timbres)
+    timbres: dict[str, TextureProfile] = field(default_factory=_smooth_funk_timbres)
 
 
 SMOOTH_FUNK = GenrePreset(
