@@ -69,6 +69,40 @@ below the high band) so the mix and QC gate stay legible. Note these profiles ar
 the *same object* a per-feature scalogram would measure — the bridge to driving
 timbre from real video texture later.
 
+### Multiscale texture → pure additive synthesis (`texture.py`)
+
+The `TextureProfile` above *post-processes* a fluidsynth note, so it can shape but
+not create spectral depth. A feature, though, is itself **multiscale** — a tree is
+a trunk, then branches, then twigs, then leaf texture — and depth comes from
+sounding those scales directly. So a `FeatureTexture` describes a feature as a
+stack of spatial **scale bands** (coarse → fine), and the synthesizer makes *the
+feature the spectrum*: each scale becomes a partial layer, coarse scales low, fine
+scales high.
+
+The description is the artifact; if it is rigorous enough, sonification is
+mechanical. **The table is the rigor gate** — every cell must be filled, and each
+maps to an exact sonic consequence (`describe_table()` renders it for any feature;
+`missing_rigor()` flags empty cells):
+
+| Dimension | Describes | → Sound |
+|---|---|---|
+| `scales` | spatial structure, coarse→fine | one partial layer per band |
+| · `energy` | structural energy at the scale | partial loudness |
+| · `homogeneity` | regular/tonal (1) vs noisy (0) | sine stack vs band noise |
+| · `density` | space-filling (1) vs sparse (0) | sustained vs granular twinkle |
+| `fractal_slope` | self-similarity (1/fᵝ) | power-law partial rolloff |
+| `scale_ratio` | branching ratio across scales | audio octave step per band |
+| `bloom` | vertical order, bottom→top | coarse-first onset stagger |
+| `medium` | substance it emerges from | dark residue tail |
+| `modulation` | temporal life (drift, flicker) | multi-rate amplitude mod |
+| `conscious` | a being, not a material | no texture (carried by motif) |
+
+The three archetypes, encoded as gold-standard descriptions: **rock** = energy in
+coarse scales, high homogeneity, lava residue → darkest, solid; **fire** =
+broadband at every scale + a fast chaotic flicker under a slow drift; **tree** =
+homogeneous trunk + a self-similar (fractal) branch rolloff + a sparse, noisy leaf
+canopy that blooms up from the trunk. `scripts/texture_demo.py` renders all three.
+
 ## Architecture
 
 A single **Storyboard** (scene timelines + Story + entity events) is the root
