@@ -1,0 +1,24 @@
+title: forest -> campfire walk
+duration: 12
+features:
+  tree:
+    medium: {amount: 0.1, persistence_s: 0.3, darkness: 0.85}
+    components:
+      trunk: {freq: 60, roughness: 0.25, mode: sustained, mod: [{rate: 0.2, depth: 0.2}]}
+      branches: {freq: 280, roughness: 0.3, mode: granular, grain_rate: 8, grain_jitter: 0.5}
+      canopy: {freq: 1800, roughness: 0.08, mode: granular, grain_rate: 14, grain_dur: 0.07, grain_jitter: 0.45}
+  fire:
+    dynamic: tue
+    components:
+      body: {freq: 110, roughness: 0.85, mode: sustained, mod: [{rate: 0.3, depth: 0.35}]}
+      tongues: {freq: 600, roughness: 0.9, mode: sustained, mod: [{rate: 0.3, depth: 0.3}, {rate: 11, depth: 0.6, chaos: 0.85}]}
+      sparks: {freq: 3000, roughness: 0.7, mode: granular, grain_rate: 10, grain_dur: 0.05, grain_jitter: 0.8}
+perspective:
+  - {t: 0-2, target: tree.canopy, gain: 0.9->0.6}
+  - {t: 0-4, target: tree.branches, gain: 0.5->0.5}
+  - {t: 2-4, target: tree.trunk, gain: 0.3->0.8}
+  - {t: 4-8, target: tree.*, gain: ->0.2}
+  - {t: 4-8, target: fire.body, gain: 0->0.7}
+  - {t: 8-12, target: fire.tongues, gain: 0.4->0.9}
+  - {t: 8-12, target: fire.sparks, gain: 0.2->0.8}
+  - {t: 8-12, target: fire.body, gain: ->0.7}

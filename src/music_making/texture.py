@@ -114,9 +114,9 @@ def _scale_env(n: int, onset_s: float, density: float, sr: int,
                rng: np.random.Generator) -> np.ndarray:
     """Onset bloom + density-driven granularity for one scale band."""
     env = np.ones(n, dtype=np.float32)
-    a = max(1, int((0.02 + onset_s) * sr))          # attack incl. bloom delay
+    a = min(n, max(1, int((0.02 + onset_s) * sr)))   # attack incl. bloom delay
     env[:a] = np.linspace(0.0, 1.0, a, dtype=np.float32)
-    r = max(1, int(0.05 * sr))                       # short release
+    r = min(n, max(1, int(0.05 * sr)))               # short release
     env[-r:] *= np.linspace(1.0, 0.0, r, dtype=np.float32)
     if density < 1.0:
         # sparse scales (twigs, sparks) twinkle rather than sustain
@@ -153,14 +153,15 @@ def _modulate(x: np.ndarray, sr: int, mods: list[ModBand], seed: int) -> np.ndar
 
 def _residue(x: np.ndarray, sr: int, med: Medium) -> np.ndarray:
     """A dark, viscous tail — the medium the feature emerges from."""
-    if med.amount <= 0:
+    if med.amount <= 0 or med.persistence_s <= 0:
         return x
     length = max(1, int(med.persistence_s * sr))
     t = np.arange(length) / sr
     ir = np.exp(-t / (med.persistence_s / 3.0)).astype(np.float32)
     tail = signal.fftconvolve(x, ir)[: len(x)].astype(np.float32)
-    cutoff = (1.0 - med.darkness) * 4000.0 + 250.0
-    sos = signal.butter(2, cutoff / (sr / 2), btype="low", output="sos")
+    nyq = sr / 2.0
+    cutoff = float(np.clip((1.0 - med.darkness) * 4000.0 + 250.0, 50.0, nyq * 0.95))
+    sos = signal.butter(2, cutoff / nyq, btype="low", output="sos")
     tail = signal.sosfilt(sos, tail).astype(np.float32)
     tail *= (np.max(np.abs(x)) + 1e-9) / (np.max(np.abs(tail)) + 1e-9)
     return ((1.0 - med.amount * 0.5) * x + med.amount * tail).astype(np.float32)

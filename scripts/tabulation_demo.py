@@ -1,6 +1,9 @@
-"""Render a tabulation to audio and print its perspective table.
+"""Render a tabulation to audio and show it as both tables (perspective + grid).
 
-    /opt/venv/bin/python scripts/tabulation_demo.py [out_dir]
+    /opt/venv/bin/python scripts/tabulation_demo.py [tabulation.yaml] [out_dir]
+
+With no YAML path it falls back to the built-in forest_fire_walk(). Edit the
+YAML file and re-run to hear the change — the file is the authoring surface.
 """
 
 from __future__ import annotations
@@ -9,14 +12,36 @@ import sys
 from pathlib import Path
 
 from music_making import audio
-from music_making.tabulation import describe_perspective, forest_fire_walk, render_tabulation
+from music_making.tabulation import (
+    describe_grid,
+    describe_perspective,
+    forest_fire_walk,
+    load_tabulation,
+    render_tabulation,
+)
+
+DEFAULT_YAML = "tabulations/forest_fire_walk.yaml"
 
 
 def main(argv: list[str]) -> int:
-    out = Path(argv[1]) if len(argv) > 1 else Path("demos/tabulation")
+    args = [a for a in argv[1:]]
+    yaml_path = next((a for a in args if a.endswith((".yaml", ".yml"))), None)
+    out_args = [a for a in args if a != yaml_path]
+    out = Path(out_args[0]) if out_args else Path("demos/tabulation")
     out.mkdir(parents=True, exist_ok=True)
-    tab = forest_fire_walk()
-    print("\n" + describe_perspective(tab) + "\n")
+
+    if yaml_path:
+        tab = load_tabulation(yaml_path)
+    elif Path(DEFAULT_YAML).is_file():
+        tab = load_tabulation(DEFAULT_YAML)
+        yaml_path = DEFAULT_YAML
+    else:
+        tab = forest_fire_walk()
+
+    print(f"\nsource: {yaml_path or 'built-in forest_fire_walk()'}\n")
+    print(describe_perspective(tab) + "\n")
+    print(describe_grid(tab) + "\n")
+
     x = render_tabulation(tab, seed=0)
     wav = str(out / "walk.wav")
     audio.save_wav(wav, x)

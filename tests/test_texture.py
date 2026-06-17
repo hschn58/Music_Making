@@ -59,6 +59,20 @@ def test_fractal_top_end_is_richer_than_a_single_scale():
     assert many > one
 
 
+def test_short_duration_and_degenerate_medium_are_safe():
+    """Durations shorter than the attack/release windows, and a zero-persistence /
+    out-of-range-darkness medium, render finite instead of crashing or NaN."""
+    from music_making.texture import FeatureTexture, Medium, ScaleBand
+
+    x = render_feature(rock_texture(), 110.0, 0.03, seed=0)   # < attack+release
+    assert len(x) == int(0.03 * audio.SR) and np.all(np.isfinite(x))
+
+    ft = FeatureTexture("x", scales=[ScaleBand(1.0)],
+                        medium=Medium(amount=0.5, persistence_s=0.0, darkness=2.0))
+    y = render_feature(ft, 110.0, 1.0, seed=0)
+    assert np.all(np.isfinite(y))
+
+
 def test_bloom_delays_fine_scales():
     """With bloom, the fine (high) scales enter later: the back half is brighter
     than the front half."""
