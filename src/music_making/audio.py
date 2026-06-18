@@ -68,7 +68,9 @@ def load_wav(path: str) -> np.ndarray:
 
 
 def save_wav(path: str, samples: np.ndarray, sr: int = SR) -> str:
-    sf.write(str(path), np.clip(samples, -1.0, 1.0), sr)
+    from .safety import master  # every export passes the safety stage
+
+    sf.write(str(path), master(samples, sr), sr)
     return path
 
 
