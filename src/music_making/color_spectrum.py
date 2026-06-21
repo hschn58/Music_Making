@@ -60,44 +60,71 @@ def _hue_freq(h: np.ndarray) -> np.ndarray:
     return RED_HZ * (VIOLET_HZ / RED_HZ) ** frac
 
 
-def feature_spectrum(rgb: np.ndarray, seed: int = 0):
-    """Pixels (N,3 in [0,1]) -> (FREQS, spectrum E, (f_lo, f_hi))."""
+def _decompose(rgb: np.ndarray, pos: np.ndarray | None = None, seed: int = 0):
+    """Shared core: pixels -> (E, (f_lo, f_hi), attribution).
+
+    ``attribution`` retains the per-pixel -> per-bin mapping that ``feature_spectrum``
+    otherwise discards, so the dynamics layer can build the per-frequency 3D
+    center-of-mass c(f). If ``pos`` (N,3 positions, same order as ``rgb``) is given it is
+    subsampled in lockstep and returned in the attribution. Keys:
+      tone_pix  - pixel index of each tonal contribution (purples appear twice)
+      tone_bin  - its FREQS bin;   tone_w - its weight (V*S share)
+      flat_w    - per-pixel V*(1-S) floor weight
+      pos       - the aligned positions (or None);  band_mask - chromatic-band bins
+    """
     rgb = np.asarray(rgb, dtype=np.float64).reshape(-1, 3)
+    if pos is not None:
+        pos = np.asarray(pos, dtype=np.float64).reshape(-1, 3)
     if len(rgb) > 20000:                       # subsample huge regions for speed
-        rgb = rgb[np.random.default_rng(seed).choice(len(rgb), 20000, replace=False)]
+        sel = np.random.default_rng(seed).choice(len(rgb), 20000, replace=False)
+        rgb = rgb[sel]
+        if pos is not None:
+            pos = pos[sel]
     h, s, v = _rgb_to_hsv(rgb)
 
     # tonal peaks: spectral pixels -> one peak; purples (h > H_VIOLET) -> red + blue
     spectral = h <= H_VIOLET
-    pk_f, pk_w = [], []
-    pk_f.append(_hue_freq(h[spectral]))
-    pk_w.append((v * s)[spectral])
-    if (~spectral).any():
-        p = (h[~spectral] - H_VIOLET) / (1.0 - H_VIOLET)        # 0 at violet -> 1 back to red
-        vs = (v * s)[~spectral]
-        pk_f += [np.full((~spectral).sum(), RED_HZ), np.full((~spectral).sum(), VIOLET_HZ)]
+    sp, pu = np.where(spectral)[0], np.where(~spectral)[0]
+    pk_f = [_hue_freq(h[spectral])]
+    pk_w = [(v * s)[spectral]]
+    pk_pix = [sp]
+    if pu.size:
+        p = (h[pu] - H_VIOLET) / (1.0 - H_VIOLET)               # 0 at violet -> 1 back to red
+        vs = (v * s)[pu]
+        pk_f += [np.full(pu.size, RED_HZ), np.full(pu.size, VIOLET_HZ)]
         pk_w += [vs * p, vs * (1.0 - p)]
+        pk_pix += [pu, pu]
     pk_f = np.concatenate(pk_f)
     pk_w = np.concatenate(pk_w)
+    pk_pix = np.concatenate(pk_pix)
 
     # accumulate peaks onto the log grid, then smooth into tonal bumps
-    idx = np.clip(np.searchsorted(FREQS, pk_f), 0, NG - 1)
+    tone_bin = np.clip(np.searchsorted(FREQS, pk_f), 0, NG - 1)
     tone = np.zeros(NG)
-    np.add.at(tone, idx, pk_w)
+    np.add.at(tone, tone_bin, pk_w)
     bins_per_oct = NG / np.log2(F_HI_GRID / F_LO_GRID)
     tone = gaussian_filter1d(tone, TONE_SIGMA_OCT * bins_per_oct)
 
     # broadband floor from desaturated pixels, spread over the chromatic band
     band = (FREQS >= RED_HZ) & (FREQS <= VIOLET_HZ)
+    flat_w = v * (1.0 - s)
     flat = np.zeros(NG)
-    flat[band] = (v * (1.0 - s)).sum() / max(band.sum(), 1)
+    flat[band] = flat_w.sum() / max(band.sum(), 1)
 
     E = tone + flat
     if E.max() > 0:
         E = E / E.max()
 
     f_lo, f_hi = _robust_band(pk_f, pk_w)
-    return FREQS, E, (f_lo, f_hi)
+    attr = {"tone_pix": pk_pix, "tone_bin": tone_bin, "tone_w": pk_w,
+            "flat_w": flat_w, "pos": pos, "band_mask": band}
+    return E, (f_lo, f_hi), attr
+
+
+def feature_spectrum(rgb: np.ndarray, seed: int = 0):
+    """Pixels (N,3 in [0,1]) -> (FREQS, spectrum E, (f_lo, f_hi))."""
+    E, fband, _ = _decompose(rgb, seed=seed)
+    return FREQS, E, fband
 
 
 def _robust_band(freqs: np.ndarray, weights: np.ndarray):
@@ -113,16 +140,22 @@ def _robust_band(freqs: np.ndarray, weights: np.ndarray):
 
 
 def synthesize(E: np.ndarray, freqs: np.ndarray = FREQS, dur: float = 3.0,
-               sr: int = audio.SR, seed: int = 0) -> np.ndarray:
+               sr: int = audio.SR, seed: int = 0, phase: str = "aligned") -> np.ndarray:
     """Additive resynthesis of a spectrum: sum sinusoids weighted by E. Sharp
     peaks read as tones; broad regions become dense -> noise. 'The feature IS the
-    spectrum.'"""
+    spectrum.'
+
+    phase: "aligned" (all partials in-phase, phi=0) or "random" (per-seed). Phase
+    is a FUTURE KNOB -- it shapes the attack transient and the within-band
+    interference pattern, but not whether distinct frequencies beat. Default
+    in-phase for now."""
     keep = E > 0.01 * E.max() if E.max() > 0 else np.zeros(len(E), bool)
     f, a = freqs[keep], E[keep]
     n = int(dur * sr)
     if not len(f):
         return np.zeros(n, np.float32)
-    phi = np.random.default_rng(seed).uniform(0, 2 * np.pi, len(f))
+    phi = (np.zeros(len(f)) if phase == "aligned"
+           else np.random.default_rng(seed).uniform(0, 2 * np.pi, len(f)))
     x = np.zeros(n, dtype=np.float64)
     for s0 in range(0, n, 8192):                                # chunk to bound memory
         e0 = min(n, s0 + 8192)
@@ -151,9 +184,11 @@ def spectrogram(frame_pixels: list, seed: int = 0) -> np.ndarray:
 
 
 def synthesize_spectrogram(E_t: np.ndarray, freqs: np.ndarray = FREQS, dur: float = 8.0,
-                           sr: int = audio.SR, seed: int = 0) -> np.ndarray:
+                           sr: int = audio.SR, seed: int = 0, phase: str = "aligned") -> np.ndarray:
     """Additive resynthesis of a spectrogram: each bin's amplitude glides between
-    the per-frame columns. The walk becomes the music."""
+    the per-frame columns. The walk becomes the music.
+
+    phase: "aligned" (in-phase) or "random" -- a future knob (see synthesize)."""
     E_t = np.asarray(E_t, dtype=np.float64)
     T = E_t.shape[0]
     n = int(dur * sr)
@@ -162,7 +197,8 @@ def synthesize_spectrogram(E_t: np.ndarray, freqs: np.ndarray = FREQS, dur: floa
     f, Ek = freqs[keep], E_t[:, keep]
     if not f.size:
         return np.zeros(n, np.float32)
-    phi = np.random.default_rng(seed).uniform(0, 2 * np.pi, len(f))
+    phi = (np.zeros(len(f)) if phase == "aligned"
+           else np.random.default_rng(seed).uniform(0, 2 * np.pi, len(f)))
     col_pos = np.linspace(0, n - 1, T)
     x = np.zeros(n, dtype=np.float64)
     for s0 in range(0, n, 8192):                         # chunk to bound memory

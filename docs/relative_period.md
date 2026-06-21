@@ -144,3 +144,78 @@ decides how generously the ear is allowed to hear structure in them.
 
 Good-sounding = **lower-left**: smooth (no beating) **and** deeply periodic (short
 relperiod). See `demos/consonance/two_axes.png`.
+
+---
+
+## 5. The difference frequency $\Delta f$ — beat vs spacing
+
+Relative period is about the *slow* return of $p(t)$. There is also a *fast*
+timescale hiding in every pair of tones: their **difference frequency**. Take two
+tones $f_1 \le f_2$ and let $\Delta f = f_2 - f_1$. The product-to-sum identity
+splits their sum into a carrier times an envelope:
+
+$$\sin(2\pi f_1 t) + \sin(2\pi f_2 t)
+= \underbrace{2\cos\!\big(2\pi \tfrac{\Delta f}{2}\, t\big)}_{\text{envelope}}\;
+  \underbrace{\sin\!\big(2\pi \bar f\, t\big)}_{\text{carrier}},
+\qquad \bar f = \frac{f_1+f_2}{2}.$$
+
+The envelope's **magnitude** $\lvert\cos\rvert$ repeats twice per cosine cycle, so
+the loudness pulses $\Delta f$ times a second: **the beat rate is $\Delta f$.** This
+pulsing is **not in the instruction list** (two constant-amplitude sines) — it is a
+real property of their *sum*, the pressure wave in the air.
+
+Which axis $\Delta f$ belongs to depends on whether the ear can pull the two tones
+apart, set by the **critical bandwidth** $\mathrm{CB}(f)$ (≈ one Bark, see
+`structure.py`):
+
+| regime | what the ear does | governed by |
+|--------|-------------------|-------------|
+| $\Delta f \lesssim \mathrm{CB}$ | **unresolved** — one tone at $\bar f$ throbbing at $\Delta f$ (1–5 Hz = shimmer; 20–40 Hz = roughness) | **axis 1 (roughness)** |
+| $\Delta f \gtrsim \mathrm{CB}$ | **resolved** — two separate steady tones; $\Delta f$ is just the interval | **axis 2 (relative period)**, via the ratio $f_2/f_1$ |
+
+**Link to $F=\gcd$.** $\Delta f$ is *one* pairwise difference. $F = \gcd(f_1,\dots,f_n)$
+is the **deepest common difference** — the slow frequency at which *every* partial
+reinforces, with the full waveform returning every $1/F$. For two tones $F \mid \Delta f$.
+The fast beat ($\Delta f$) is what the ear feels when partials are *crammed inside a
+critical band*; the slow return ($1/F$) is what it feels when they are *spread apart*.
+
+### Why a clean instruction list doesn't remove the beat — resolution duality
+
+To distinguish two tones $\Delta f$ apart, **any** analyzer needs an observation
+window long enough to see them separate:
+
+$$T_{\text{obs}} \;\gtrsim\; \frac{1}{\Delta f}\qquad\text{(time–bandwidth / Fourier uncertainty).}$$
+
+- An **STFT** with a short window can't resolve close partials, so it paints **one
+  throbbing merged line**; a long window resolves them into **two flat lines** — same
+  audio, different picture. So a clean-looking spectrogram is partly a *window choice*,
+  not a fact about the sound.
+- The **ear** has no such freedom: its critical-band filters have a fixed bandwidth,
+  hence fixed time resolution. When $\Delta f < \mathrm{CB}$ it is permanently in the
+  short-window regime and **registers the beat** — no matter how steady the
+  instruction list looks. This is exactly why a "band" (a continuum of partials packed
+  within one critical band) is an intrinsically beating object to the ear even though
+  its instruction list is perfectly flat: **width = movement.**
+
+---
+
+## 6. Nyquist — the floor under the sampled instruction list
+
+The instruction list the audio driver actually receives is **discrete**: $f_s$
+samples per second ($f_s = $ `audio.SR` $= 44100$ Hz here). The
+**Nyquist–Shannon theorem** says a sampled signal can faithfully represent
+frequencies only up to the **Nyquist frequency**
+
+$$f_N = \frac{f_s}{2} = 22050\ \text{Hz}.$$
+
+Equivalently: a wave needs **at least two samples per cycle** to be told apart from
+impostors. Anything above $f_N$ **aliases** — it folds back and is played as a
+*different, lower* tone:
+
+$$f_{\text{alias}} = \Big\lvert\, f - \operatorname{round}\!\big(f/f_s\big)\,f_s \,\Big\rvert \in [0,\,f_N].$$
+
+For us the spectrum grid tops out at 5000 Hz, far below 22050 Hz, so **no aliasing
+concern** — but Nyquist is the hard ceiling on what frequency the extraction may ever
+emit, and it is the formal version of the "instruction manual" picture: the list is
+discrete (samples), the sound is continuous, and Nyquist is the bridge — *how many
+instructions per second are needed to pin a continuous wave of a given top frequency.*

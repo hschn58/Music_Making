@@ -225,3 +225,55 @@ Color picks the **available frequencies** of a feature (its identity); a
 local roughness-masking); and **brightness-over-time** will likely drive the
 **movement** (Problem B). The literal extraction is never edited — it is the sample
 space we *choose* beauty out of.
+
+---
+
+## 7. Decision → video-knob map
+
+**Why this table exists.** Building the spectrogram is a stack of decisions: for every
+feature, what frequencies exist, how loud each is, and how all of that moves in time.
+Each decision can be answered two ways — by an **arbitrary algorithmic default** (a
+fixed rule, a chosen PDE for spectral-gain evolution, a blanket envelope) or by a
+**knob the video already gives us**. The thesis: *nuanced, instrumental-grade detail
+can only come from the environment.* Any blanket algorithmic choice collapses a rich
+degree of freedom to a constant and **strips the music of detail** — every feature
+ends up moving the same way. So the rule of thumb is: **before hard-coding a rule for a
+row, check the right-hand column for a scene signal that could source it instead.** The
+**⚠ arbitrary-now** rows are where we are most at risk of baking in detail-killing
+defaults.
+
+Spectrogram = (frequency × time × amplitude), per feature. The decisions:
+
+### A. Structure — what frequencies exist, and how loud (Problem A, static per frame)
+
+| # | Decision (what it assigns) | Video knob(s) that could source it | Status |
+|---|----------------------------|-------------------------------------|--------|
+| 1 | **Support** — which frequencies may exist at all | **Hue** per pixel → `f(H)` (built); the *set* of hues present across the feature | ✅ built (color→freq); keep the support, not just edges (open Q3) |
+| 2 | **Band centers** — the roughness-free skeleton of surviving peaks | Where the feature actually concentrates color (color-energy peaks); count of distinct color regions | ⚠ arbitrary-now — greedy max-count in `structure.py` is amplitude-blind |
+| 3 | **Tone vs noise / band width** — discrete pitch vs wide band | **Saturation** (built: flat floor); **spatial texture / spatial-frequency** of the region (smooth surface → tone; mottled → noise) | ⚠ partly — width currently uniform; data-driven width is open (Q5 + the discrete-tones question) |
+| 4 | **Loudness per frequency** — the static gain of each surviving partial | **Brightness/Value** (currently *dropped* per §4.5); feature **size / energy share**; contrast | ⚠ arbitrary-now — declared a "free variable" for the optimizer; risk of feature-diversity collapse (Q4) |
+| 5 | **Perceptual center** — the pitch anchor | Dominant (modal) hue; the largest / brightest sub-region | open (Q1, Q2) |
+
+### B. Dynamics — how the spectrum moves in time (Problem B, parked)
+
+| # | Decision (what it assigns) | Video knob(s) that could source it | Status |
+|---|----------------------------|-------------------------------------|--------|
+| 6 | **Spectral-gain evolution** — how each bin's loudness changes over time | **Optical flow / motion**; **brightness-over-time**; lighting / camera change | ⚠ arbitrary-now — *this is the PDE trap*: a blanket evolution rule strips per-feature life. Source it from motion, not a fixed equation |
+| 7 | **Within-band micro-movement** — shimmer, beat rate, energy sloshing | Small-scale texture motion (ripple, flicker, foliage); local color jitter | open (Q6) |
+| 8 | **Attack / decay per partial** — onset transients, differential decay | Edges / onsets; feature appearing or leaving frame; contrast gradients | open |
+| 9 | **Per-feature tempo / periodicity** | Periodic motion in the scene (waves, swaying, gait, footsteps) | open |
+
+### C. Mix & global — combining features and the macro time axis
+
+| # | Decision (what it assigns) | Video knob(s) that could source it | Status |
+|---|----------------------------|-------------------------------------|--------|
+| 10 | **Across-feature gain** — the attention budget | **Gaze / path** (gain modulator), **distance** `1/√r`, feature size | ✅ built (§4.1) |
+| 11 | **Spatial placement** — stereo, reverb, space | Depth / distance; position in frame; scene size & reverberance | open (largely unaddressed) |
+| 12 | **Column gliding** — frame-to-frame interpolation (macro time) | The **walk / frame sequence** itself | ✅ built (`synthesize_spectrogram`) |
+| 13 | **Tolerance / cents fusion dial** — how much the ear fuses | (mostly a global aesthetic knob, *not* clearly video-sourced) | open (Q8) — honest exception: this one may stay an aesthetic global |
+
+**Reading the table:** the ✅ rows are settled and scene-sourced. The **⚠ arbitrary-now**
+rows (2, 3, 4, 6) are exactly where an algorithm is currently standing in for a scene
+signal — and where the "strips the music of detail" risk is highest. Row 6 is the one
+Henry flagged: a blanket PDE for spectral-gain evolution would make every feature
+breathe identically; the detail has to come from the feature's own motion.
