@@ -39,7 +39,7 @@ from music_making.color_spectrum import FREQS, NG
 CAP = sys.argv[1] if len(sys.argv) > 1 else "demos/walk_features"
 DUR = float(sys.argv[2]) if len(sys.argv) > 2 else 45.0
 SR = audio.SR
-OUT = "demos/walk_features"
+OUT = CAP                  # write outputs/cache alongside whatever capture is passed in
 MAXIDX = 16
 C_SND = 343.0
 
@@ -52,7 +52,9 @@ TIME_SMOOTH = 1.5  # temporal smoothing of G(f,t), in frames (kills the per-fram
 
 FEATURES = {1: ("ground", "#5a4a2a"), 2: ("water", "#1f6fb0"), 3: ("conifers", "#1f7a2e"),
             4: ("fire", "#ff7a18"), 5: ("red", "#c0142a"), 6: ("yellow", "#d8c020"),
-            7: ("purple", "#8a2da0"), 8: ("cyan", "#16b0b0"), 9: ("orange", "#e07a18")}
+            7: ("purple", "#8a2da0"), 8: ("cyan", "#16b0b0"), 9: ("orange", "#e07a18"),
+            10: ("meadow", "#d040a0"), 11: ("magenta", "#c01080"), 12: ("foliage", "#5a9a20"),
+            13: ("rocks", "#888890"), 14: ("blossoms", "#e89ac8")}
 
 
 def load(cap_dir):
