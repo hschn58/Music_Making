@@ -21,7 +21,7 @@ bands are per-frame scaffolding, never tracked across frames — Decision #4).
 from __future__ import annotations
 
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, map_coordinates
 
 from . import structure
 from .color_spectrum import F_HI_GRID, F_LO_GRID, FREQS, NG, TONE_SIGMA_OCT, _decompose
@@ -155,6 +155,95 @@ def measure_frame(rgb, pos, idx, feature_ids, T_F=0.20, T_B=0.20,
             n_b.append(max(nb, 1))
             spans.append((lo, hi))
         A_B = _attention(np.array(s_b), np.array(n_b, float), T_B)
+        # --- within-band share sigma, then assemble G and Phi per bin ---
+        G = np.zeros(NG)
+        Phi = np.zeros(NG)
+        for (lo, hi), a_b in zip(spans, A_B):
+            bins = np.arange(lo, hi + 1)
+            rb = np.where(np.isfinite(r_bin[bins]), r_bin[bins], 1e6)
+            logits = K_SIGMA * E[bins] / np.maximum(rb, EPS)
+            logits -= logits.max()
+            sig = np.exp(logits)
+            ssum = sig.sum()
+            if ssum <= 0:
+                continue
+            G[bins] = a_f * a_b * (sig / ssum)
+            Phi[bins] = 2 * np.pi * FREQS[bins] * np.where(np.isfinite(r_bin[bins]),
+                                                           r_bin[bins], 0.0) / C_SND
+        out.append(dict(fid=f["fid"], G=G, Phi=Phi, A_F=float(a_f)))
+    return out
+
+
+def _mode_coms(pts, mask_sub, ident, c_F):
+    """Per-mode 3D COMs for THIS frame: sample each reference mode-energy map
+    |psi_k|^2 at the current pixels' normalized-bbox coordinates (the identity is
+    static — option b — but WHERE each mode sits is re-located every frame, so a
+    mode living on rock #3 is at rock #3). Falls back to the feature COM where a
+    mode has no support in view."""
+    K, hb, wb = ident["psi"].shape
+    rs, cs = np.where(mask_sub)
+    r0, r1 = rs.min(), rs.max() + 1
+    c0, c1 = cs.min(), cs.max() + 1
+    u = (rs - r0) / max(r1 - r0 - 1, 1) * (hb - 1)
+    v = (cs - c0) / max(c1 - c0 - 1, 1) * (wb - 1)
+    coms = np.empty((K, 3))
+    for k in range(K):
+        w = np.maximum(map_coordinates(ident["psi"][k], [u, v], order=1), 0.0)
+        c = _com(w, pts)
+        coms[k] = c if c is not None else c_F
+    return coms
+
+
+def measure_frame_modal(pos, idx, idents, T_F=0.20, T_B=0.20,
+                        KAPPA_G=2.0, K_SIGMA=20.0, min_pix=8):
+    """One frame -> list of {fid, G(f), Phi(f), A_F}, with each feature's spectrum
+    sourced from its STATIC modal identity (docs/modal_identity.md) instead of
+    color. Same scaffolding as ``measure_frame`` — A(F).A(B).sigma over the fixed
+    bands of the modal envelope E; perspective owns the gains.
+
+    pos (H,W,3 camera-space), idx (H,W int labels), idents = {fid: modes.identity(...)}.
+    """
+    feats = []
+    for fid, ident in idents.items():
+        if ident is None:
+            continue
+        m = (idx == fid) & np.isfinite(pos[..., 2])
+        n = int(m.sum())
+        if n < min_pix:
+            continue
+        pts = pos[m]
+        c_F = pts.mean(0)
+        coms = _mode_coms(pts, m, ident, c_F)
+        r_k = np.linalg.norm(coms, axis=1)
+        # per-bin geometry: blend the mode COM ranges by each mode's contribution
+        contrib = ident["contrib"]                          # (K, NG), static
+        wsum = contrib.sum(0)
+        r_bin = np.full(NG, np.inf)
+        nz = wsum > EPS
+        r_bin[nz] = (contrib * r_k[:, None]).sum(0)[nz] / wsum[nz]
+        feats.append(dict(fid=fid, ident=ident, coms=coms, r_bin=r_bin, N=n,
+                          contrib=contrib, s_F=_gaze_score(c_F, KAPPA_G)))
+    if not feats:
+        return []
+
+    A_F = _attention(np.array([f["s_F"] for f in feats]),
+                     np.array([f["N"] for f in feats], float), T_F)
+
+    out = []
+    for f, a_f in zip(feats, A_F):
+        ident, contrib, coms, r_bin = f["ident"], f["contrib"], f["coms"], f["r_bin"]
+        E = ident["E"]
+        Etot = max(E.sum(), EPS)
+        # --- band attention A(B) over the STATIC bands: band COM = contribution-
+        # weighted blend of the (per-frame) mode COMs over the band's bins ---
+        s_b, n_b, spans = [], [], []
+        for lo, hi, _pk in ident["bands"]:
+            wk = contrib[:, lo:hi + 1].sum(1)
+            c_b = (wk[:, None] * coms).sum(0) / max(wk.sum(), EPS)
+            s_b.append(_gaze_score(c_b, KAPPA_G))
+            n_b.append(max(1.0, f["N"] * E[lo:hi + 1].sum() / Etot))
+            spans.append((lo, hi))
+        A_B = _attention(np.array(s_b), np.array(n_b), T_B)
         # --- within-band share sigma, then assemble G and Phi per bin ---
         G = np.zeros(NG)
         Phi = np.zeros(NG)
